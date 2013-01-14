@@ -375,6 +375,10 @@ public:
   /// @return The induction variable at a certain dimension.
   const PHINode *getInductionVariableForDimension(unsigned Dimension) const;
 
+  ///@brief Restrict the domain of the statement.
+  ///
+  ///@param NewDomain The new statement domain.
+  void restrictDomain(__isl_take isl_set *NewDomain);
   /// @brief Get the loop for a dimension.
   ///
   /// @param Dimension The dimension of the induction variable
