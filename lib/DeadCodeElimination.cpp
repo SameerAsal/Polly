@@ -25,6 +25,8 @@
 #include "polly/LinkAllPasses.h"
 #include "polly/ScopInfo.h"
 
+#include "isl/union_map.h"
+
 using namespace llvm;
 using namespace polly;
 
@@ -34,7 +36,8 @@ class DeadCodeElim : public ScopPass {
 
 public:
   static char ID;
-  explicit DeadCodeElim() : ScopPass(ID) {}
+  explicit DeadCodeElim() : ScopPass(ID) {
+  }
 
   virtual bool runOnScop(Scop &S);
   void printScop(llvm::raw_ostream &OS) const;
@@ -46,17 +49,28 @@ char DeadCodeElim::ID = 0;
 
 bool DeadCodeElim::runOnScop(Scop &S) {
   Dependences *D = &getAnalysis<Dependences>();
+  isl_union_map *Dependences_WAW = D->getDependences(Dependences::TYPE_WAW);
+  isl_union_map *Dependences_RAW = D->getDependences(Dependences::TYPE_RAW);
+  isl_union_set* OriginalDomain = S.getDomains();
 
-  int Kinds =
-      Dependences::TYPE_RAW | Dependences::TYPE_WAR | Dependences::TYPE_WAW;
+  isl_union_map* IterationsToDelteDomainsMap  = isl_union_map_subtract( Dependences_WAW , Dependences_RAW );
+  isl_union_set* IterationsToDelete = isl_union_map_domain( IterationsToDelteDomainsMap );
+  isl_union_set* NewDomains = isl_union_set_subtract( OriginalDomain , IterationsToDelete   );
 
-  isl_union_map *Deps = D->getDependences(Kinds);
-
-  isl_union_map_free(Deps);
+  for (Scop::iterator SI = S.begin(), SE = S.end(); SI != SE; ++SI){
+    ScopStmt*  Stmt = *SI;
+    isl_set*   StmtDomain  = Stmt->getDomain();
+    isl_union_set* StmDomainUnion	= isl_union_set_from_set( StmtDomain );
+    isl_union_set* NewStmtDomainUnion	= isl_union_set_intersect( StmDomainUnion , isl_union_set_copy( NewDomains ) );
+    isl_set* NewStmtDomain = isl_set_from_union_set( NewStmtDomainUnion );
+    Stmt->restrictDomain( NewStmtDomain );
+  }
+  isl_union_set_free(NewDomains);
   return false;
 }
 
-void DeadCodeElim::printScop(raw_ostream &OS) const {}
+void DeadCodeElim::printScop(raw_ostream &OS) const {
+}
 
 void DeadCodeElim::getAnalysisUsage(AnalysisUsage &AU) const {
   ScopPass::getAnalysisUsage(AU);
@@ -69,5 +83,9 @@ INITIALIZE_PASS_BEGIN(DeadCodeElim, "polly-dce",
                       "Polly - Remove dead iterations", false, false)
 INITIALIZE_PASS_DEPENDENCY(Dependences)
 INITIALIZE_PASS_DEPENDENCY(ScopInfo)
-INITIALIZE_PASS_END(DeadCodeElim, "polly-dce", "Polly - Remove dead iterations",
-                    false, false)
+INITIALIZE_PASS_END(DeadCodeElim, "polly-dce",
+                      "Polly - Remove dead iterations", false, false)
+
+Pass* polly::createDeadCodeElimPass() {
+  return new DeadCodeElim();
+}
