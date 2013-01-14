@@ -448,6 +448,14 @@ void MemoryAccess::setNewAccessRelation(isl_map *newAccess) {
 
 isl_map *ScopStmt::getScattering() const { return isl_map_copy(Scattering); }
 
+void ScopStmt::restrictDomain(__isl_take isl_set *NewDomain) {
+  assert(isl_set_is_subset(NewDomain, Domain) &&
+         "New domain is not a subset of old domain!");
+  isl_set_free(Domain);
+  Domain = NewDomain;
+  Scattering = isl_map_intersect_domain(Scattering, isl_set_copy(Domain));
+}
+
 void ScopStmt::setScattering(isl_map *NewScattering) {
   isl_map_free(Scattering);
   Scattering = NewScattering;
