@@ -24,8 +24,8 @@
 #include "isl/union_map.h"
 #include "polly/LinkAllPasses.h"
 #include "polly/ScopInfo.h"
-
 #include "isl/union_map.h"
+#include "isl/set.h"
 
 using namespace llvm;
 using namespace polly;
@@ -52,21 +52,26 @@ bool DeadCodeElim::runOnScop(Scop &S) {
   isl_union_map *Dependences_WAW = D->getDependences(Dependences::TYPE_WAW);
   isl_union_map *Dependences_RAW = D->getDependences(Dependences::TYPE_RAW);
   isl_union_set *OriginalDomain = S.getDomains();
-
   isl_union_map *IterationsToDelteDomainsMap =
       isl_union_map_subtract(Dependences_WAW, Dependences_RAW);
   isl_union_set *IterationsToDelete =
       isl_union_map_domain(IterationsToDelteDomainsMap);
   isl_union_set *NewDomains = isl_union_set_subtract(OriginalDomain,
                                                      IterationsToDelete);
-
   for (Scop::iterator SI = S.begin(), SE = S.end(); SI != SE; ++SI) {
     ScopStmt *Stmt = *SI;
     isl_set *StmtDomain = Stmt->getDomain();
     isl_union_set *StmDomainUnion = isl_union_set_from_set(StmtDomain);
     isl_union_set *NewStmtDomainUnion =
         isl_union_set_intersect(StmDomainUnion, isl_union_set_copy(NewDomains));
-    isl_set *NewStmtDomain = isl_set_from_union_set(NewStmtDomainUnion);
+    isl_union_set_dump(NewStmtDomainUnion);
+    isl_set *NewStmtDomain;
+    if (isl_union_set_is_empty(NewStmtDomainUnion)) {
+      NewStmtDomain = isl_set_empty(Stmt->getDomainSpace());
+      isl_union_set_free(NewStmtDomainUnion);
+    } else {
+      NewStmtDomain = isl_set_from_union_set(NewStmtDomainUnion);
+    }
     Stmt->restrictDomain(NewStmtDomain);
   }
   isl_union_set_free(NewDomains);
