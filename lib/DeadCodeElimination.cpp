@@ -52,12 +52,54 @@ bool DeadCodeElim::runOnScop(Scop &S) {
   isl_union_map *Dependences_WAW = D->getDependences(Dependences::TYPE_WAW);
   isl_union_map *Dependences_RAW = D->getDependences(Dependences::TYPE_RAW);
   isl_union_set *OriginalDomain = S.getDomains();
-  isl_union_map *IterationsToDeleteDomainsMap =
-      isl_union_map_subtract(Dependences_WAW, Dependences_RAW);
-  isl_union_set *IterationsToDelete =
-      isl_union_map_domain(IterationsToDeleteDomainsMap);
-  isl_union_set *NewDomains = isl_union_set_subtract(OriginalDomain,
-                                                     IterationsToDelete);
+
+  isl_union_map *IterationsToDeleteDomainsMap;
+  isl_union_set *IterationsToDelete ;
+  isl_union_set *NewDomains;
+  bool converged = false;
+
+  printf("Dependence_RAW\n");
+  isl_union_map_dump(Dependences_RAW);
+
+  printf("Dependence_WAW\n\n");
+  isl_union_map_dump(Dependences_WAW);
+  int count = 0;
+  while(!converged){
+
+    printf("count = %i.\n",count++);
+    IterationsToDeleteDomainsMap = isl_union_map_subtract(isl_union_map_copy(Dependences_WAW), isl_union_map_copy(Dependences_RAW));
+    IterationsToDelete = isl_union_map_domain(IterationsToDeleteDomainsMap);
+
+    printf("Iterations to delete:\n");
+    isl_union_set_dump(IterationsToDelete);
+
+    converged = isl_union_set_is_empty(IterationsToDelete);
+    NewDomains = isl_union_set_subtract(OriginalDomain,isl_union_set_copy(IterationsToDelete));
+
+    printf("New Domains\n");
+    isl_union_set_dump(NewDomains);
+
+    //Update the RAW dependence map after deleting the statements.
+    Dependences_RAW = isl_union_map_subtract_domain(Dependences_RAW,isl_union_set_copy(IterationsToDelete));
+    Dependences_RAW = isl_union_map_subtract_range(Dependences_RAW,isl_union_set_copy(IterationsToDelete));
+
+    printf("New Dependence_RAW\n");
+    isl_union_map_dump(Dependences_RAW);
+
+    //Update the WAW dependence map after deleting the statements.
+    Dependences_WAW = isl_union_map_subtract_domain(Dependences_WAW,isl_union_set_copy(IterationsToDelete));
+    Dependences_WAW = isl_union_map_subtract_range(Dependences_WAW,IterationsToDelete);
+
+    printf("New Dependence_WAW\n");
+    isl_union_map_dump(Dependences_WAW);
+    OriginalDomain = NewDomains;
+    printf("******Loop Finished******\n\n\n");
+
+  }
+
+  isl_union_map_free(Dependences_RAW);
+  isl_union_map_free(Dependences_WAW);
+
   for (Scop::iterator SI = S.begin(), SE = S.end(); SI != SE; ++SI) {
     ScopStmt *Stmt = *SI;
     isl_set *StmtDomain = Stmt->getDomain();
