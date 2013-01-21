@@ -26,7 +26,10 @@
 #include "polly/ScopInfo.h"
 #include "isl/union_map.h"
 #include "isl/set.h"
+#include "isl/map.h"
 
+//
+// Must remove htis
 using namespace llvm;
 using namespace polly;
 
@@ -36,8 +39,7 @@ class DeadCodeElim : public ScopPass {
 
 public:
   static char ID;
-  explicit DeadCodeElim() : ScopPass(ID) {
-  }
+  explicit DeadCodeElim() : ScopPass(ID) {}
 
   virtual bool runOnScop(Scop &S);
   void printScop(llvm::raw_ostream &OS) const;
@@ -52,60 +54,46 @@ bool DeadCodeElim::runOnScop(Scop &S) {
   isl_union_map *Dependences_WAW = D->getDependences(Dependences::TYPE_WAW);
   isl_union_map *Dependences_RAW = D->getDependences(Dependences::TYPE_RAW);
   isl_union_set *OriginalDomain = S.getDomains();
-
-  isl_union_map *IterationsToDeleteDomainsMap;
-  isl_union_set *IterationsToDelete ;
-  isl_union_set *NewDomains;
-  bool converged = false;
-
-  printf("Dependence_RAW\n");
-  isl_union_map_dump(Dependences_RAW);
-
-  printf("Dependence_WAW\n\n");
-  isl_union_map_dump(Dependences_WAW);
-  int count = 0;
-  while(!converged){
-
-    printf("count = %i.\n",count++);
-    IterationsToDeleteDomainsMap = isl_union_map_subtract(isl_union_map_copy(Dependences_WAW), isl_union_map_copy(Dependences_RAW));
-    IterationsToDelete = isl_union_map_domain(IterationsToDeleteDomainsMap);
-
-    printf("Iterations to delete:\n");
-    isl_union_set_dump(IterationsToDelete);
-
-    converged = isl_union_set_is_empty(IterationsToDelete);
-    NewDomains = isl_union_set_subtract(OriginalDomain,isl_union_set_copy(IterationsToDelete));
-
-    printf("New Domains\n");
-    isl_union_set_dump(NewDomains);
-
-    //Update the RAW dependence map after deleting the statements.
-    Dependences_RAW = isl_union_map_subtract_domain(Dependences_RAW,isl_union_set_copy(IterationsToDelete));
-    Dependences_RAW = isl_union_map_subtract_range(Dependences_RAW,isl_union_set_copy(IterationsToDelete));
-
-    printf("New Dependence_RAW\n");
-    isl_union_map_dump(Dependences_RAW);
-
-    //Update the WAW dependence map after deleting the statements.
-    Dependences_WAW = isl_union_map_subtract_domain(Dependences_WAW,isl_union_set_copy(IterationsToDelete));
-    Dependences_WAW = isl_union_map_subtract_range(Dependences_WAW,IterationsToDelete);
-
-    printf("New Dependence_WAW\n");
-    isl_union_map_dump(Dependences_WAW);
+  isl_union_map *DeleteIterationsUnionMap;
+  isl_union_set *DeleteIterations;
+  isl_union_set *NewDomains = NULL;
+  while (true) {
+    DeleteIterationsUnionMap =
+        isl_union_map_subtract(isl_union_map_copy(Dependences_WAW),
+                               isl_union_map_copy(Dependences_RAW));
+    if (isl_union_map_is_empty(DeleteIterationsUnionMap)) {
+      isl_union_map_free(DeleteIterationsUnionMap);
+      break;
+    }
+    DeleteIterations = isl_union_map_domain(DeleteIterationsUnionMap);
+    NewDomains = isl_union_set_subtract(OriginalDomain,
+                                        isl_union_set_copy(DeleteIterations));
+    // Update the RAW dependence map after deleting the statements.
+    Dependences_RAW = isl_union_map_subtract_domain(
+        Dependences_RAW, isl_union_set_copy(DeleteIterations));
+    Dependences_RAW = isl_union_map_subtract_range(
+        Dependences_RAW, isl_union_set_copy(DeleteIterations));
+    // Update the WAW dependence map after deleting the statements.
+    Dependences_WAW = isl_union_map_subtract_domain(
+        Dependences_WAW, isl_union_set_copy(DeleteIterations));
+    Dependences_WAW =
+        isl_union_map_subtract_range(Dependences_WAW, DeleteIterations);
     OriginalDomain = NewDomains;
-    printf("******Loop Finished******\n\n\n");
-
   }
 
   isl_union_map_free(Dependences_RAW);
   isl_union_map_free(Dependences_WAW);
 
+  if (NewDomains == NULL) {
+    isl_union_set_free(OriginalDomain);
+    return true;
+  }
   for (Scop::iterator SI = S.begin(), SE = S.end(); SI != SE; ++SI) {
     ScopStmt *Stmt = *SI;
     isl_set *StmtDomain = Stmt->getDomain();
     isl_union_set *StmtDomainUnion = isl_union_set_from_set(StmtDomain);
-    isl_union_set *NewStmtDomainUnion =
-        isl_union_set_intersect(StmtDomainUnion, isl_union_set_copy(NewDomains));
+    isl_union_set *NewStmtDomainUnion = isl_union_set_intersect(
+        StmtDomainUnion, isl_union_set_copy(NewDomains));
     isl_set *NewStmtDomain;
     if (isl_union_set_is_empty(NewStmtDomainUnion)) {
       NewStmtDomain = isl_set_empty(Stmt->getDomainSpace());
@@ -119,8 +107,7 @@ bool DeadCodeElim::runOnScop(Scop &S) {
   return false;
 }
 
-void DeadCodeElim::printScop(raw_ostream &OS) const {
-}
+void DeadCodeElim::printScop(raw_ostream &OS) const {}
 
 void DeadCodeElim::getAnalysisUsage(AnalysisUsage &AU) const {
   ScopPass::getAnalysisUsage(AU);
@@ -133,9 +120,5 @@ INITIALIZE_PASS_BEGIN(DeadCodeElim, "polly-dce",
                       "Polly - Remove dead iterations", false, false)
 INITIALIZE_PASS_DEPENDENCY(Dependences)
 INITIALIZE_PASS_DEPENDENCY(ScopInfo)
-INITIALIZE_PASS_END(DeadCodeElim, "polly-dce",
-                      "Polly - Remove dead iterations", false, false)
-
-Pass* polly::createDeadCodeElimPass() {
-  return new DeadCodeElim();
-}
+INITIALIZE_PASS_END(DeadCodeElim, "polly-dce", "Polly - Remove dead iterations",
+                    false, false)
