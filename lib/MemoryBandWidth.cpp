@@ -48,11 +48,26 @@ public:
 char MemoryBandwidth::ID = 0;
 
 bool MemoryBandwidth::runOnScop(Scop &S) {
-    // Count the number of statements.
+    // Not made public by ScopStmt.
+	// However, the iterators are made public by the class, we cant use them like this
+	// anyway so o had to redifine them.
+
+	typedef SmallVector<MemoryAccess *, 8> MemoryAccessVec;
+    typedef MemoryAccessVec::iterator memacc_iterator;
+
+	// Count the number of statements.
     // Loop over all the statements in the scope.
     int computation_count = 0;
     int memory_cout = 0;
     int generic_count = 0;
+
+	for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
+      ScopStmt *Stmt  = *SI;
+      memacc_iterator  mem_access =  Stmt->memacc_begin();
+      memacc_iterator  _end   =  Stmt->memacc_end();
+      bool isWrite    				  =  (*mem_access)->isWrite();
+//      (*mem_access)->isStrideOne(
+	}
 
 
 	for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
@@ -66,11 +81,11 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
             printf("\tMemory:\t%s\n", instruction->getOpcodeName());
            } else {
            		switch (instruction->getOpcode()) {
-                  case Instruction::Add:
-           		  case Instruction::Sub:
-                  case Instruction::Mul:
+                  case Instruction::FAdd:
+           		  case Instruction::FSub:
                   case Instruction::UDiv:
                   case Instruction::SDiv:
+                  case Instruction::FMul:
 				    printf("\tCompute:\t%s\n", instruction->getOpcodeName());
 				    computation_count++;
                     break;
@@ -81,9 +96,9 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
 		}
 	}
     printf("Generic  Instructions count: %i\n",  generic_count);
-    printf("Compute Instructions count: %i\n", compute_count);
+    printf("Compute Instructions count: %i\n", computation_count);
     printf("Memoey  Instructions count: %i\n", memory_cout);
-	printf("Ratio of compute to memory instructions = %f\n\n", (compute_count*1.0)/memory_cout);
+	printf("Ratio of compute to memory instructions = %f\n\n", (computation_count*1.0)/memory_cout);
 	return false;
 }
 
@@ -96,8 +111,8 @@ void MemoryBandwidth::getAnalysisUsage(AnalysisUsage &AU) const {
 Pass *polly::createMemoryBandwidthPass() { return new MemoryBandwidth(); }
 
 
-INITIALIZE_PASS_BEGIN(MemoryBandwidth, "mem-bw",   "Polly - Compute memory Bandwidth", false, false)
+INITIALIZE_PASS_BEGIN(MemoryBandwidth, "polly-mem-bw",   "Polly - Compute memory Bandwidth", false, false)
 INITIALIZE_PASS_DEPENDENCY(Dependences)
 INITIALIZE_PASS_DEPENDENCY(ScopInfo)
-INITIALIZE_PASS_END(MemoryBandwidth, "mem-bw", "Polly - Computes Memory Bandwidth",
+INITIALIZE_PASS_END(MemoryBandwidth, "polly-mem-bw", "Polly - Computes Memory Bandwidth",
                     false, false)
