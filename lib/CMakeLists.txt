@@ -32,6 +32,7 @@ add_polly_loadable_module(LLVMPolly
   Pocc.cpp
   RegisterPasses.cpp
   ScheduleOptimizer.cpp
+  MemoryBandWidth.cpp
   ${POLLY_SCOPLIB_FILES}
   ${POLLY_PLUTO_FILES}
   )

@@ -33,6 +33,7 @@ llvm::Pass *createCodeGenerationPass();
 #endif
 llvm::Pass *createCodePreparationPass();
 llvm::Pass *createDeadCodeElimPass();
+llvm::Pass *createMemoryBandwidthPass();
 llvm::Pass *createDependencesPass();
 llvm::Pass *createDOTOnlyPrinterPass();
 llvm::Pass *createDOTOnlyViewerPass();
