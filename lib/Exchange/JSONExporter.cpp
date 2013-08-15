@@ -244,6 +244,10 @@ bool JSONImporter::runOnScop(Scop &scop) {
   if (!D->isValidScattering(&NewScattering)) {
     errs() << "JScop file contains a scattering that changes the "
            << "dependences. Use -disable-polly-legality to continue anyways\n";
+    for (StatementToIslMapTy::iterator SI = NewScattering.begin(),
+                                       SE = NewScattering.end();
+         SI != SE; ++SI)
+      isl_map_free(SI->second);
     return false;
   }
 
@@ -262,8 +266,8 @@ bool JSONImporter::runOnScop(Scop &scop) {
     for (ScopStmt::memacc_iterator MI = Stmt->memacc_begin(),
                                    ME = Stmt->memacc_end();
          MI != ME; ++MI) {
-      Json::Value accesses = jscop["statements"][statementIdx]["accesses"][
-          memoryAccessIdx]["relation"];
+      Json::Value accesses = jscop["statements"][statementIdx]["accesses"]
+                                  [memoryAccessIdx]["relation"];
       isl_map *newAccessMap =
           isl_map_read_from_str(S->getIslCtx(), accesses.asCString());
       isl_map *currentAccessMap = (*MI)->getAccessRelation();

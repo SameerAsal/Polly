@@ -182,22 +182,38 @@ public:
 
   __isl_give isl_pw_aff *visitAddRecExpr(const SCEVAddRecExpr *Expr) {
     assert(Expr->isAffine() && "Only affine AddRecurrences allowed");
-    assert(S->getRegion().contains(Expr->getLoop()) &&
-           "Scop does not contain the loop referenced in this AddRec");
 
+    // Directly generate isl_pw_aff for Expr if 'start' is zero.
+    if (Expr->getStart()->isZero()) {
+      assert(S->getRegion().contains(Expr->getLoop()) &&
+             "Scop does not contain the loop referenced in this AddRec");
+
+      isl_pw_aff *Start = visit(Expr->getStart());
+      isl_pw_aff *Step = visit(Expr->getOperand(1));
+      isl_space *Space = isl_space_set_alloc(Ctx, 0, NbLoopSpaces);
+      isl_local_space *LocalSpace = isl_local_space_from_space(Space);
+
+      int loopDimension = getLoopDepth(Expr->getLoop());
+
+      isl_aff *LAff = isl_aff_set_coefficient_si(
+          isl_aff_zero_on_domain(LocalSpace), isl_dim_in, loopDimension, 1);
+      isl_pw_aff *LPwAff = isl_pw_aff_from_aff(LAff);
+
+      // TODO: Do we need to check for NSW and NUW?
+      return isl_pw_aff_add(Start, isl_pw_aff_mul(Step, LPwAff));
+    }
+
+    // Translate AddRecExpr from '{start, +, inc}' into 'start + {0, +, inc}'
+    // if 'start' is not zero.
+    ScalarEvolution &SE = *S->getSE();
+    const SCEV *ZeroStartExpr = SE.getAddRecExpr(
+        SE.getConstant(Expr->getStart()->getType(), 0),
+        Expr->getStepRecurrence(SE), Expr->getLoop(), SCEV::FlagAnyWrap);
+
+    isl_pw_aff *ZeroStartResult = visit(ZeroStartExpr);
     isl_pw_aff *Start = visit(Expr->getStart());
-    isl_pw_aff *Step = visit(Expr->getOperand(1));
-    isl_space *Space = isl_space_set_alloc(Ctx, 0, NbLoopSpaces);
-    isl_local_space *LocalSpace = isl_local_space_from_space(Space);
 
-    int loopDimension = getLoopDepth(Expr->getLoop());
-
-    isl_aff *LAff = isl_aff_set_coefficient_si(
-        isl_aff_zero_on_domain(LocalSpace), isl_dim_in, loopDimension, 1);
-    isl_pw_aff *LPwAff = isl_pw_aff_from_aff(LAff);
-
-    // TODO: Do we need to check for NSW and NUW?
-    return isl_pw_aff_add(Start, isl_pw_aff_mul(Step, LPwAff));
+    return isl_pw_aff_add(ZeroStartResult, Start);
   }
 
   __isl_give isl_pw_aff *visitSMaxExpr(const SCEVSMaxExpr *Expr) {
@@ -288,11 +304,11 @@ MemoryAccess::MemoryAccess(const IRAccess &Access, const Instruction *AccInst,
     // access must or may happen. However, for write accesses it is important to
     // differentiate between writes that must happen and writes that may happen.
     AccessRelation = isl_map_from_basic_map(createBasicAccessMap(Statement));
-    Type = Access.isRead() ? Read : MayWrite;
+    Type = Access.isRead() ? READ : MAY_WRITE;
     return;
   }
 
-  Type = Access.isRead() ? Read : MustWrite;
+  Type = Access.isRead() ? READ : MUST_WRITE;
 
   isl_pw_aff *Affine = SCEVAffinator::getPwAff(Statement, Access.getOffset());
 
@@ -325,7 +341,7 @@ void MemoryAccess::realignParams() {
 MemoryAccess::MemoryAccess(const Value *BaseAddress, ScopStmt *Statement) {
   newAccessRelation = NULL;
   BaseAddr = BaseAddress;
-  Type = Read;
+  Type = READ;
   statement = Statement;
 
   isl_basic_map *BasicAccessMap = createBasicAccessMap(Statement);
@@ -336,13 +352,13 @@ MemoryAccess::MemoryAccess(const Value *BaseAddress, ScopStmt *Statement) {
 
 void MemoryAccess::print(raw_ostream &OS) const {
   switch (Type) {
-  case Read:
+  case READ:
     OS.indent(12) << "ReadAccess := \n";
     break;
-  case MustWrite:
+  case MUST_WRITE:
     OS.indent(12) << "MustWriteAccess := \n";
     break;
-  case MayWrite:
+  case MAY_WRITE:
     OS.indent(12) << "MayWriteAccess := \n";
     break;
   }
@@ -494,6 +510,8 @@ void ScopStmt::buildAccesses(TempScop &tempScop, const Region &CurRegion) {
                                       E = AccFuncs->end();
        I != E; ++I) {
     MemAccs.push_back(new MemoryAccess(I->first, I->second, this));
+    assert(!InstructionToAccess.count(I->second) &&
+           "Unexpected 1-to-N mapping on instruction to access map!");
     InstructionToAccess[I->second] = MemAccs.back();
   }
 }
