@@ -162,6 +162,7 @@ static void initializePollyPasses(PassRegistry &Registry) {
   initializeIslCodeGenerationPass(Registry);
   initializeCodePreparationPass(Registry);
   initializeDeadCodeElimPass(Registry);
+  initializeMemoryBandwidthPass(Registry);
   initializeDependencesPass(Registry);
   initializeIndependentBlocksPass(Registry);
   initializeJSONExporterPass(Registry);
@@ -263,6 +264,7 @@ static void registerPollyPasses(llvm::PassManagerBase &PM) {
 
   if (DeadCodeElim)
     PM.add(polly::createDeadCodeElimPass());
+
 
   switch (Optimizer) {
   case OPTIMIZER_NONE:

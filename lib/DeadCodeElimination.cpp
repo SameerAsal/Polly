@@ -28,8 +28,6 @@
 using namespace llvm;
 using namespace polly;
 
-//KKKK
-
 namespace {
 
 class DeadCodeElim : public ScopPass {

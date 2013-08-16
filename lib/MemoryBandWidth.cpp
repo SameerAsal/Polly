@@ -48,23 +48,19 @@ public:
 char MemoryBandwidth::ID = 0;
 
 bool MemoryBandwidth::runOnScop(Scop &S) {
-  Dependences *D = &getAnalysis<Dependences>();
-  isl_union_map *Dependences_WAW = D->getDependences(Dependences::TYPE_WAW);
-  isl_union_map *Dependences_RAW = D->getDependences(Dependences::TYPE_RAW);
-HHH}
+  return false;
+}
 
 void MemoryBandwidth::printScop(raw_ostream &OS) const {}
 
 void MemoryBandwidth::getAnalysisUsage(AnalysisUsage &AU) const {
-  ScopPass::getAnalysisUsage(AU);
-  AU.addRequired<Dependences>();
 }
 
 Pass *polly::createMemoryBandwidthPass() { return new MemoryBandwidth(); }
 
-INITIALIZE_PASS_BEGIN(MemoryBandwidth, "mem-bw",
-                      "Polly - Compute memory Bandwidth", false, false)
-INITIALIZE_PASS_DEPENDENCY(Dependences)ggg
+
+INITIALIZE_PASS_BEGIN(MemoryBandwidth, "mem-bw",   "Polly - Compute memory Bandwidth", false, false)
+INITIALIZE_PASS_DEPENDENCY(Dependences)
 INITIALIZE_PASS_DEPENDENCY(ScopInfo)
 INITIALIZE_PASS_END(MemoryBandwidth, "mem-bw", "Polly - Computes Memory Bandwidth",
                     false, false)
