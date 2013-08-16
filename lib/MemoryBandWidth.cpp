@@ -52,6 +52,9 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
     // Loop over all the statements in the scope.
     int computation_count = 0;
     int memory_cout = 0;
+    int generic_count = 0;
+
+
 	for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
 		ScopStmt *Stmt  = *SI;
 		BasicBlock* bb =  Stmt->getBasicBlock();
@@ -66,6 +69,8 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
                   case Instruction::Add:
            		  case Instruction::Sub:
                   case Instruction::Mul:
+                  case Instruction::UDiv:
+                  case Instruction::SDiv:
 				    printf("\tCompute:\t%s\n", instruction->getOpcodeName());
 				    computation_count++;
                     break;
@@ -75,7 +80,10 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
            		}
 		}
 	}
-    printf("Ratio of compute to memory instructions = %f", (computation_count*1.0)/memory_cout);
+    printf("Generic  Instructions count: %i\n",  generic_count);
+    printf("Compute Instructions count: %i\n", compute_count);
+    printf("Memoey  Instructions count: %i\n", memory_cout);
+	printf("Ratio of compute to memory instructions = %f\n\n", (compute_count*1.0)/memory_cout);
 	return false;
 }
 
