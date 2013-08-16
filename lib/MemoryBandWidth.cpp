@@ -50,7 +50,8 @@ char MemoryBandwidth::ID = 0;
 bool MemoryBandwidth::runOnScop(Scop &S) {
     // Count the number of statements.
     // Loop over all the statements in the scope.
-//    int computation_count = 0;
+    int computation_count = 0;
+    int memory_cout = 0;
 	for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
 		ScopStmt *Stmt  = *SI;
 		BasicBlock* bb =  Stmt->getBasicBlock();
@@ -58,21 +59,23 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
 		// loops over every instruction in the basic block.
 		for (BasicBlock::iterator instruction = bb->begin(); instruction != bb->end(); instruction++) {
           if (instruction->mayReadOrWriteMemory()) {
-            printf("\tMemory related instruction:\t%s\n", instruction->getOpcodeName());
-             } else {
+            memory_cout++;
+            printf("\tMemory:\t%s\n", instruction->getOpcodeName());
+           } else {
            		switch (instruction->getOpcode()) {
                   case Instruction::Add:
            		  case Instruction::Sub:
                   case Instruction::Mul:
-				    printf("\tInstruction found, it is\t:\t%s\n", instruction->getOpcodeName());
+				    printf("\tCompute:\t%s\n", instruction->getOpcodeName());
+				    computation_count++;
                     break;
                  default:
-                	 printf("\twInstruction is:\t\t%s\n", instruction->getOpcodeName());
+                	 printf("\tGeneric:\t%s\n", instruction->getOpcodeName());
   	           		}
            		}
 		}
 	}
-	// Count the number of memory oprations:
+    printf("Ratio of compute to memory instructions = %f", (computation_count*1.0)/memory_cout);
 	return false;
 }
 
