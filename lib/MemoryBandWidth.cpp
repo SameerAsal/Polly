@@ -68,7 +68,6 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
       bool isWrite    				  =  (*mem_access)->isWrite();
 //      (*mem_access)->isStrideOne(
 
-
 	}
 
 
