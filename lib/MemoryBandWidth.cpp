@@ -67,6 +67,8 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
       memacc_iterator  _end   =  Stmt->memacc_end();
       bool isWrite    				  =  (*mem_access)->isWrite();
 //      (*mem_access)->isStrideOne(
+
+
 	}
 
 
