@@ -333,6 +333,13 @@ MemoryAccess::MemoryAccess(const IRAccess &Access, const Instruction *AccInst,
                                           getBaseName().c_str());
 }
 
+void MemoryAccess::analyzePerf() {
+  printf("Analyzing performance \n");
+  isl_int ii;
+  isl_set*  access_range = isl_map_range((AccessRelation));
+  printf("Is set empty: %i\n", isl_set_is_empty(access_range));
+}
+
 void MemoryAccess::realignParams() {
   isl_space *ParamSpace = statement->getParent()->getParamSpace();
   AccessRelation = isl_map_align_params(AccessRelation, ParamSpace);

@@ -54,6 +54,7 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
 
 	typedef SmallVector<MemoryAccess *, 8> MemoryAccessVec;
     typedef MemoryAccessVec::iterator memacc_iterator;
+    memacc_iterator  mem_access;
 
 	// Count the number of statements.
     // Loop over all the statements in the scope.
@@ -70,6 +71,7 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
 
 	}
 
+	return false;
 
 	for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
 		ScopStmt *Stmt  = *SI;

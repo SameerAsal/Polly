@@ -186,6 +186,9 @@ public:
   /// @brief Align the parameters in the access relation to the scop context
   void realignParams();
 
+  /// @brief analyzes the memory access of the SCoP
+  void analyzePerf();
+
   /// @brief Print the MemoryAccess.
   ///
   /// @param OS The output stream the MemoryAccess is printed to.
