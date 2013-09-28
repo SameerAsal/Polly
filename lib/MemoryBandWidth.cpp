@@ -71,6 +71,9 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
 
 	}
 
+
+
+
 	return false;
 
 	for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
