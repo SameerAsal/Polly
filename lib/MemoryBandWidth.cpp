@@ -27,6 +27,8 @@
 #include "isl/union_map.h"
 #include "isl/set.h"
 #include "isl/map.h"
+//#include "barvinok/barvinok.h"
+
 
 using namespace llvm;
 using namespace polly;
@@ -67,12 +69,10 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
       memacc_iterator  mem_access =  Stmt->memacc_begin();
       memacc_iterator  _end   =  Stmt->memacc_end();
       bool isWrite    				  =  (*mem_access)->isWrite();
-//      (*mem_access)->isStrideOne(
-
+      isl_map* map = isl_map_copy( (*mem_access)->getAccessRelation()) ;
+      printf("Size is %i \n", isl_map_card( map)->isl_pw_qpolynomial );
+      isl_set_card()
 	}
-
-
-
 
 	return false;
 
@@ -82,6 +82,7 @@ bool MemoryBandwidth::runOnScop(Scop &S) {
 		printf("Basic Block: %s\n",bb->getName());
 		// loops over every instruction in the basic block.
 		for (BasicBlock::iterator instruction = bb->begin(); instruction != bb->end(); instruction++) {
+
           if (instruction->mayReadOrWriteMemory()) {
             memory_cout++;
             printf("\tMemory:\t%s\n", instruction->getOpcodeName());

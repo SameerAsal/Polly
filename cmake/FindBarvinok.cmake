@@ -1,0 +1,18 @@
+FIND_PATH(Barvinok_INCLUDE_DIR barvinok/barvinok.h)
+FIND_LIBRARY(Barvinok_LIBRARY NAMES barvinok)
+
+IF (Barvinok_INCLUDE_DIR AND Barvinok_LIBRARY)
+  SET(Barvinok_FOUND TRUE)
+ENDIF (Barvinok_INCLUDE_DIR AND Barvinok_LIBRARY)
+
+IF (Barvinok_FOUND)
+  IF (NOT Barvinok_FIND_QUIETLY)
+    MESSAGE(STATUS "Found Barvinok: ${Barvinok_LIBRARY}")
+    MESSAGE(STATUS "Found Barvinok: ${Barvinok_INCLUDE_DIR}")
+  ENDIF (NOT Barvinok_FIND_QUIETLY)
+ELSE (Barvinok_FOUND)
+  IF (Barvinok_FIND_REQUIRED)
+    MESSAGE("Path=${CMAKE_PREFIX_PATH}")
+    MESSAGE(FATAL_ERROR "Could not find Barvinok")
+  ENDIF (Barvinok_FIND_REQUIRED)
+ENDIF (Barvinok_FOUND)
