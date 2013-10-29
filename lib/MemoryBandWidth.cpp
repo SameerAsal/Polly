@@ -27,16 +27,15 @@
 #include "isl/union_map.h"
 #include "isl/set.h"
 #include "isl/map.h"
-//#include "barvinok/barvinok.h"
+#include "barvinok/barvinok.h"
 
 
-using namespace llvm;
+//using namespace llvm;
 using namespace polly;
 
 namespace {
 
 class MemoryBandwidth : public ScopPass {
-
 public:
   static char ID;
   explicit MemoryBandwidth() : ScopPass(ID) {}
@@ -48,67 +47,64 @@ public:
 }
 
 char MemoryBandwidth::ID = 0;
-
 bool MemoryBandwidth::runOnScop(Scop &S) {
-    // Not made public by ScopStmt.
-	// However, the iterators are made public by the class, we cant use them like this
-	// anyway so o had to redifine them.
+ 
+ // Not made public by ScopStmt.
+ // However, the iterators are made public by the class, we cant use them like this
+ // anyway so o had to redifine them.
 
-	typedef SmallVector<MemoryAccess *, 8> MemoryAccessVec;
-    typedef MemoryAccessVec::iterator memacc_iterator;
-    memacc_iterator  mem_access;
+  typedef SmallVector<MemoryAccess *, 8> MemoryAccessVec;
+  typedef MemoryAccessVec::iterator memacc_iterator;
+  memacc_iterator  mem_access;
 
-	// Count the number of statements.
-    // Loop over all the statements in the scope.
-    int computation_count = 0;
-    int memory_cout = 0;
-    int generic_count = 0;
+  // Count the number of statements.
+  // Loop over all the statements in the scope.
+  int computation_count = 0;
+  int memory_cout = 0;
+  int generic_count = 0;
 
-	for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
+  for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
+
+    ScopStmt *Stmt = *SI;
+    memacc_iterator mem_access = Stmt->memacc_begin();
+    memacc_iterator _end       = Stmt->memacc_end();
+    bool isWrite = (*mem_access)->isWrite();
+    isl_map* map = isl_map_copy( (*mem_access)->getAccessRelation());
+    printf("Size is %i \n", isl_map_card(map));
+    for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
       ScopStmt *Stmt  = *SI;
-      memacc_iterator  mem_access =  Stmt->memacc_begin();
-      memacc_iterator  _end   =  Stmt->memacc_end();
-      bool isWrite    				  =  (*mem_access)->isWrite();
-      isl_map* map = isl_map_copy( (*mem_access)->getAccessRelation()) ;
-      printf("Size is %i \n", isl_map_card( map)->isl_pw_qpolynomial );
-      isl_set_card()
-	}
-
-	return false;
-
-	for (Scop::iterator SI = S.begin(); SI != S.end(); SI++) {
-		ScopStmt *Stmt  = *SI;
-		BasicBlock* bb =  Stmt->getBasicBlock();
-		printf("Basic Block: %s\n",bb->getName());
-		// loops over every instruction in the basic block.
-		for (BasicBlock::iterator instruction = bb->begin(); instruction != bb->end(); instruction++) {
-
+      BasicBlock* bb =  Stmt->getBasicBlock();
+      printf("Basic Block: %s\n",bb->getName());
+      // loops over every instruction in the basic block.
+      for (BasicBlock::iterator instruction = bb->begin(); instruction != bb->end(); instruction++) {
           if (instruction->mayReadOrWriteMemory()) {
             memory_cout++;
             printf("\tMemory:\t%s\n", instruction->getOpcodeName());
            } else {
-           		switch (instruction->getOpcode()) {
-                  case Instruction::FAdd:
-           		  case Instruction::FSub:
-                  case Instruction::UDiv:
-                  case Instruction::SDiv:
-                  case Instruction::FMul:
-				    printf("\tCompute:\t%s\n", instruction->getOpcodeName());
-				    computation_count++;
-                    break;
-                 default:
-                	 printf("\tGeneric:\t%s\n", instruction->getOpcodeName());
-  	           		}
-           		}
-		}
-	}
-    printf("Generic  Instructions count: %i\n",  generic_count);
-    printf("Compute Instructions count: %i\n", computation_count);
-    printf("Memoey  Instructions count: %i\n", memory_cout);
-	printf("Ratio of compute to memory instructions = %f\n\n", (computation_count*1.0)/memory_cout);
-	return false;
+            switch (instruction->getOpcode()) {
+              case Instruction::FAdd:
+              case Instruction::FSub:
+              case Instruction::UDiv:
+              case Instruction::SDiv:
+              case Instruction::FMul:
+	       printf("\tCompute:\t%s\n", instruction->getOpcodeName());
+	       computation_count++;
+               break;
+              default:
+                printf("\tGeneric:\t%s\n", instruction->getOpcodeName()); 
+          }
+        }
+      }
+    }
+  printf("Generic  Instructions count: %i\n", generic_count);
+  printf("Compute Instructions count: %i\n", computation_count);
+  printf("Memoey  Instructions count: %i\n", memory_cout);
+  printf("Ratio of compute to memory instructions = %f\n\n", (computation_count*1.0)/memory_cout);
+ return false;
 }
 
+
+}
 void MemoryBandwidth::printScop(raw_ostream &OS) const {}
 
 void MemoryBandwidth::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -118,8 +114,7 @@ void MemoryBandwidth::getAnalysisUsage(AnalysisUsage &AU) const {
 Pass *polly::createMemoryBandwidthPass() { return new MemoryBandwidth(); }
 
 
-INITIALIZE_PASS_BEGIN(MemoryBandwidth, "polly-mem-bw",   "Polly - Compute memory Bandwidth", false, false)
+INITIALIZE_PASS_BEGIN(MemoryBandwidth, "polly-mem-bw", "Polly - Compute memory Bandwidth", false, false)
 INITIALIZE_PASS_DEPENDENCY(Dependences)
 INITIALIZE_PASS_DEPENDENCY(ScopInfo)
-INITIALIZE_PASS_END(MemoryBandwidth, "polly-mem-bw", "Polly - Computes Memory Bandwidth",
-                    false, false)
+INITIALIZE_PASS_END(MemoryBandwidth, "polly-mem-bw", "Polly - Computes Memory Bandwidth", false, false)
